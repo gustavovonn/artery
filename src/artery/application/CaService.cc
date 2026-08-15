@@ -93,6 +93,9 @@ void CaService::initialize()
 
 	// look up primary channel for CA
 	mPrimaryChannel = getFacilities().get_const<MultiChannelPolicy>().primaryChannel(vanetza::aid::CA);
+
+	recordScalar("stationID", mVehicleDataProvider->station_id());
+	recordScalar("isFaulty", 0);
 }
 
 void CaService::trigger()
