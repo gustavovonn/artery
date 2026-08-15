@@ -1,7 +1,7 @@
 add_subdirectory(artery)
 
-add_subdirectory(gemv2)
-add_subdirectory(highway-police)
+# add_subdirectory(gemv2)       # Not needed for cp-trustfulness research
+# add_subdirectory(highway-police) # Not needed for cp-trustfulness research
 if(WITH_ENVMOD)
     add_subdirectory(envmod)
     add_subdirectory(rsu_grid)
