@@ -75,6 +75,9 @@ public:
 
         long objectPerceptionQuality = 0;  // Vanetza_ITS2_ObjectPerceptionQuality_t (typedef long)
 
+        long lengthDm = 0;  // objectDimensionX [0.1 m]
+        long widthDm = 0;   // objectDimensionY [0.1 m]
+
         bool hasVelocity = false;
         double speedMps = 0.0;
         double headingDeg = 0.0;

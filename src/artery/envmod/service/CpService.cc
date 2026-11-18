@@ -22,6 +22,7 @@
 #include <vanetza/geonet/station_type.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <chrono>
 
 namespace artery
@@ -406,10 +407,12 @@ void CpService::capturePerceivedObjectSnapshot(
                 lastDetected = trackingTime.last();
             }
         }
-        int64_t lastDetectedTaiMs = countTaiMilliseconds(mTimer->getTimeFor(lastDetected));
-        int64_t deltaTime = referenceTime - lastDetectedTaiMs;
-        deltaTime = std::clamp(deltaTime, int64_t(-2048), int64_t(2047));
-        snap.measurementDeltaTimeMs = static_cast<long>(deltaTime);
+        // FIX: the object's position and velocity below are read from the simulation now (getCentrePoint(), the
+        // object's VehicleDataProvider), not stored at lastDetected: the local environment model keeps only a
+        // pointer to the object and the detection times. Labelling them referenceTime - lastDetected stamped
+        // them up to a sensor period early, an error of speed * delta on the receiver. The content is sampled at
+        // referenceTime, so its measurement delta is 0
+        snap.measurementDeltaTimeMs = 0;
 
         // first detected time
         SimTime firstDetected = SimTime::getMaxTime();
@@ -449,6 +452,15 @@ void CpService::capturePerceivedObjectSnapshot(
             snap.yCm = Vanetza_ITS2_CartesianCoordinateLarge_positiveOutOfRange;
 
         snap.objectPerceptionQuality = Vanetza_ITS2_ObjectPerceptionQuality_fullConfidence;
+
+        // object dimensions
+        // ground truth of the simulated object, as its position
+        auto dimension = [](double metres) {
+            const long dm = std::lround(metres * 10.0);
+            return dm < 1 ? 1L : dm > 255 ? long(Vanetza_ITS2_ObjectDimensionValue_outOfRange) : dm;
+        };
+        snap.lengthDm = dimension(objPtr->getLength().value());
+        snap.widthDm = dimension(objPtr->getWidth().value());
 
         const auto vdpSnapshotIt = objectVdpSnapshots.find(snap.lemId);
         if (vdpSnapshotIt != objectVdpSnapshots.end() && vdpSnapshotIt->second.hasVdpData) {
@@ -1029,6 +1041,13 @@ void addPerceivedObjectContainer(
 
         po->objectPerceptionQuality = vanetza::asn1::allocate<Vanetza_ITS2_ObjectPerceptionQuality_t>();
         *(po->objectPerceptionQuality) = snap.objectPerceptionQuality;
+
+        po->objectDimensionX = vanetza::asn1::allocate<Vanetza_ITS2_ObjectDimension_t>();
+        po->objectDimensionX->value = snap.lengthDm;
+        po->objectDimensionX->confidence = Vanetza_ITS2_ObjectDimensionConfidence_unavailable;
+        po->objectDimensionY = vanetza::asn1::allocate<Vanetza_ITS2_ObjectDimension_t>();
+        po->objectDimensionY->value = snap.widthDm;
+        po->objectDimensionY->confidence = Vanetza_ITS2_ObjectDimensionConfidence_unavailable;
 
         po->velocity = nullptr;
         if (snap.hasVelocity) {
